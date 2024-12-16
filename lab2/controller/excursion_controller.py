@@ -1,72 +1,65 @@
+from view.content_viewer import content_viewer
+from view.create_experience_view import create_experience_view
+from view.experience_edit_view import experience_edit_view
+
+
 class ExcursionController:
 
     def __init__(self, app):
-
         self.app = app
-        self.excursion_service = app.services["excursion_service"]
 
-    def control(self):
+    def show_experience_edit_page(self, experience=None):
+        if experience:
+            experience_edit_view(
+                self.app.root,
+                experience_data={
+                    "name": experience[0],
+                    "type": experience[1],
+                    "country": experience[2],
+                    "theme": experience[3],
+                    "rating": experience[4],
+                },
+                handle_save=self.app.handle_save_experience_edit,
+                go_back=self.app.show_guide_main
+            )
+        else:
+            print("No experience selected!")
 
-        guide_main_view = self.app.get_window("guide_main_view")
-        create_experience_view = self.app.get_window("create_experience_view")
-        experience_edit_view = self.app.get_window("experience_edit_view")
+    def show_experience_start_page(self, experience=None):
+        if experience:
+            print(f"Starting experience: {experience}")
+            self.show_content_viewer()
+        else:
+            print("No experience selected! Returning to main screen.")
+            self.app.show_tourist_main()
 
-        guide_main_view.set_action("create_new", self.show_create_experience)
-        guide_main_view.set_action("edit_selected", self.show_edit_experience)
-        guide_main_view.set_action("delete_selected", self.delete_experience)
+    def handle_delete_experience(self, experience=None, table=None):
+        if experience:
+            print(f"Deleting experience: {experience}")
+            for row in table.get_children():
+                if table.item(row)["values"] == experience:
+                    table.delete(row)
+                    break
+        else:
+            print("No experience selected!")
 
-        create_experience_view.set_action("save", self.save_new_experience)
-        create_experience_view.set_action("back", lambda: self.app.show_window("guide_main_view"))
+    def apply_filters(self, *args):
+        print(f"Filters applied: {args}")
 
-        experience_edit_view.set_action("save", self.save_edited_experience)
-        experience_edit_view.set_action("back", lambda: self.app.show_window("guide_main_view"))
+    def handle_save_experience_edit(self, updated_data):
+        print(f"Updated experience: {updated_data}")
+        self.app.show_guide_main()
+
+    def handle_save_experience(self, name, description, age, theme):
+        print(f"Saved Experience: {name}, {description}, {age}, {theme}")
+
+    def show_content_viewer(self):
+        slides = self.app.get_slides()
+        content_viewer(self.app.root, slides=slides, go_back=self.app.show_tourist_main)
 
     def show_create_experience(self):
-
-        create_experience_view = self.app.get_window("create_experience_view")
-        create_experience_view.clear_fields()
-        self.app.show_window("create_experience_view")
-
-    def save_new_experience(self, experience_data):
-
-        success = self.excursion_service.add_experience(experience_data)
-        if success:
-            print("Experience created successfully!")
-            self.app.show_window("guide_main_view")
-        else:
-            print("Failed to create experience.")
-            create_experience_view = self.app.get_window("create_experience_view")
-            create_experience_view.show_error("Failed to create experience. Try again.")
-
-    def show_edit_experience(self, selected_experience):
-
-        if selected_experience:
-            experience_edit_view = self.app.get_window("experience_edit_view")
-            experience_edit_view.set_experience_data(selected_experience)
-            self.app.show_window("experience_edit_view")
-        else:
-            print("No experience selected!")
-
-    def save_edited_experience(self, updated_data):
-
-        success = self.excursion_service.update_experience(updated_data)
-        if success:
-            print("Experience updated successfully!")
-            self.app.show_window("guide_main_view")
-        else:
-            print("Failed to update experience.")
-            experience_edit_view = self.app.get_window("experience_edit_view")
-            experience_edit_view.show_error("Failed to update experience. Try again.")
-
-    def delete_experience(self, selected_experience):
-
-        if selected_experience:
-            success = self.excursion_service.delete_experience(selected_experience)
-            if success:
-                print("Experience deleted successfully!")
-                guide_main_view = self.app.get_window("guide_main_view")
-                guide_main_view.refresh_table()
-            else:
-                print("Failed to delete experience.")
-        else:
-            print("No experience selected!")
+        create_experience_view(
+            self.app.root,
+            handle_save=self.handle_save_experience,
+            go_back=self.app.show_guide_main
+        )
