@@ -1,47 +1,52 @@
+from view.history_view import history_view
+from view.profile_view import profile_view
+
+
 class UserController:
     def __init__(self, app):
         self.app = app
-        self.user_service = app.services["user_service"]
 
-    def control(self):
-        profile_view = self.app.get_window("profile_view")
-        history_view = self.app.get_window("history_view")
-        edit_profile_view = self.app.get_window("edit_profile_view")
+    def handle_edit_profile(self):
+        print(f"Editing profile for user: {self.app.user_data['name']}")
 
-        profile_view.set_action("edit_profile", self.show_edit_profile)
-        profile_view.set_action(
-            "view_history",
-            lambda: self.app.show_window("history_view")
-            if self.app.current_user["status"] == "Tourist"
-            else None,
+    def show_profile(self):
+        if not self.app.user_data:
+            print("No user data available!")
+            return
+
+        go_back = self.app.show_tourist_main if self.app.user_data["status"] == "Tourist" else self.app.show_guide_main
+
+        profile_view(
+            self.app.root,
+            user_data=self.app.user_data,
+            edit_profile=self.app.show_edit_profile,
+            view_history=self.app.show_history if self.app.user_data["status"] == "Tourist" else None,
+            go_back=go_back
         )
-        profile_view.set_action("back", self.go_back)
-
-        history_view.set_action("back", lambda: self.app.show_window("profile_view"))
-        edit_profile_view.set_action("save", self.save_profile_changes)
-        edit_profile_view.set_action("back", lambda: self.app.show_window("profile_view"))
 
     def show_edit_profile(self):
-        edit_profile_view = self.app.get_window("edit_profile_view")
-        user_data = self.app.current_user
-        edit_profile_view.set_user_data(user_data)
-        self.app.show_window("edit_profile_view")
+        def save_changes(name, birth_year):
+            self.app.user_data["name"] = name
+            self.app.user_data["birth_year"] = birth_year
+            print(f"Profile updated: {self.app.user_data}")
+            self.show_profile()
 
-    def save_profile_changes(self, updated_data):
-        success = self.user_service.update_user(
-            self.app.current_user["name"], updated_data
+        from view.edit_profile_view import edit_profile_view
+        edit_profile_view(
+            self.app.root,
+            user_data=self.app.user_data,
+            save_changes=save_changes,
+            go_back=self.show_profile
         )
-        if success:
-            print("Profile updated successfully!")
-            self.app.current_user.update(updated_data)
-            self.app.show_window("profile_view")
-        else:
-            print("Failed to update profile.")
-            edit_profile_view = self.app.get_window("edit_profile_view")
-            edit_profile_view.show_error("Failed to update profile. Try again.")
 
-    def go_back(self):
-        if self.app.current_user["status"] == "Tourist":
-            self.app.show_window("tourist_main_view")
-        elif self.app.current_user["status"] == "Guide":
-            self.app.show_window("guide_main_view")
+    def show_history(self):
+        history_data = self.app.get_history()
+        history_view(self.app.root, history_data=history_data, go_back=self.show_profile)
+
+
+    @staticmethod
+    def get_history():
+        return [
+            {"name": "Louvre Tour", "date": "2024-01-01", "rating": 5},
+            {"name": "Eiffel Tower", "date": "2024-01-02", "rating": 4},
+        ]
